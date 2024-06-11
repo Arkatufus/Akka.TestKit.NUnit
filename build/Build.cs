@@ -77,7 +77,7 @@ partial class Build : NukeBuild
     public AbsolutePath DocFxDir => RootDirectory / "docs";
     public AbsolutePath DocFxDirJson => DocFxDir / "docfx.json";
 
-    readonly Solution Solution = ProjectModelTasks.ParseSolution(RootDirectory.GlobFiles("*.sln").FirstOrDefault());
+    readonly Solution Solution = SolutionModelTasks.ParseSolution(RootDirectory.GlobFiles("*.sln").FirstOrDefault());
 
     GitHubActions GitHubActions => GitHubActions.Instance;
     private long BuildNumber()
@@ -103,8 +103,8 @@ partial class Build : NukeBuild
         {
             RootDirectory
             .GlobDirectories("src/**/bin", "src/**/obj", Output, OutputTests, OutputPerfTests, OutputNuget, DocSiteDirectory)
-            .ForEach(DeleteDirectory);
-            EnsureCleanDirectory(Output);
+            .ForEach(path => path.DeleteDirectory());
+            Output.CreateOrCleanDirectory();
         });
 
     Target Restore => _ => _
@@ -240,9 +240,9 @@ partial class Build : NukeBuild
             {
                 // if you need to filter tests by environment, do it here.
                 if (EnvironmentInfo.IsWin)
-                    return Solution.GetProjects("*.Tests");
+                    return Solution.GetAllProjects("*.Tests");
                 else
-                    return Solution.GetProjects("*.Tests");
+                    return Solution.GetAllProjects("*.Tests");
             }
             var projects = GetProjects();
             foreach (var project in projects)
@@ -258,7 +258,7 @@ partial class Build : NukeBuild
                            .SetResultsDirectory(OutputTests)
                            .SetProcessWorkingDirectory(Directory.GetParent(project).FullName)
                            .SetLoggers("trx")
-                           .SetVerbosity(verbosity: DotNetVerbosity.Normal)
+                           .SetVerbosity(verbosity: DotNetVerbosity.normal)
                            .EnableNoBuild());
                 }
             }
